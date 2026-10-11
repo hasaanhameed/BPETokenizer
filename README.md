@@ -62,6 +62,11 @@ python -m cleaning.corpus_stats
 python -m tokenizer.train_tokenizer
 python -m tokenizer.encode_corpus
 
+# 4. Part C analysis (needs data/final/test.txt)
+python -m analysis.merges_report        # Q1
+python -m analysis.compare_tokenizers   # Q2
+python -m analysis.failure_cases        # Q3
+
 # Tests
 python -m unittest discover tests
 python -m tests.compare_trainers --merges 5000

@@ -40,6 +40,7 @@ BPETokenizer/
 ├── analysis/
 │   ├── merges_report.py
 │   ├── compare_tokenizers.py
+│   ├── failure_cases.py
 │   └── samples/
 ├── tests/
 │   ├── test_normalize.py
@@ -133,7 +134,10 @@ The scraper also records `url` and `fetched_at` as evidence that we collected th
 |---|---|
 | `merges_report.py` | Q1. Selected merges as decoded text, two-byte letter rebuilds, invalid-UTF-8 tokens, the first whole word and the 20 longest tokens. |
 | `compare_tokenizers.py` | Q2. Tokens per word for our tokenizer, `gpt2` and `o200k_base` on `test.txt` and the 7 hand-picked samples. |
-| `samples/` | The 7 hand-picked inputs. They also supply the Q3 failure cases. |
+| `failure_cases.py` | Q3. Token splits and tokens per word for three inputs we handle badly (Roman Urdu, unnormalized Arabic letters and digits, emoji), each next to a well-handled version. |
+| `samples/` | The 7 hand-picked inputs for Q2: news, poetry, Urdu with English, Roman Urdu, numbers and dates, diacritics, names. |
+
+The report source is `report/report.html`. `report/report.pdf` is printed from it with headless Microsoft Edge, and the numbers in it come from the three scripts above.
 
 ## 4. Data Flow
 
