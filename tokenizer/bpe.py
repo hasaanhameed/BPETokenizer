@@ -1,0 +1,84 @@
+from collections import Counter
+from math import inf
+from pathlib import Path
+
+import regex
+
+END_OF_TEXT = "<|endoftext|>"
+END_OF_TEXT_ID = 256
+PATTERN = regex.compile(r" ?[\p{L}\p{M}‌]+| ?\p{N}{1,3}| ?[^\s\p{L}\p{M}\p{N}]+|\s+(?!\S)|\s+")
+
+
+def pretokenize(text):
+    return PATTERN.findall(text)
+
+
+def build_vocab(merges):
+    vocab = [bytes([b]) for b in range(256)] + [END_OF_TEXT.encode("utf-8")]
+    for a, b in merges:
+        vocab.append(vocab[a] + vocab[b])
+    return vocab
+
+
+def count_pairs(word):
+    return Counter(zip(word, word[1:]))
+
+
+def merge_word(word, pair, new_id):
+    merged = []
+    i = 0
+    while i < len(word):
+        if i + 1 < len(word) and (word[i], word[i + 1]) == pair:
+            merged.append(new_id)
+            i += 2
+        else:
+            merged.append(word[i])
+            i += 1
+    return merged
+
+
+def pair_key(pair, count, vocab):
+    a, b = pair
+    return (count, vocab[a], vocab[b], a, b)
+
+
+class BPETokenizer:
+    def __init__(self, merges):
+        self.merges = list(merges)
+        self.vocab = build_vocab(self.merges)
+        self.ranks = {pair: 257 + i for i, pair in enumerate(self.merges)}
+        self.cache = {}
+
+    def encode(self, text):
+        ids = []
+        for i, piece in enumerate(text.split(END_OF_TEXT)):
+            if i > 0:
+                ids.append(END_OF_TEXT_ID)
+            for word in pretokenize(piece):
+                ids.extend(self.encode_word(word))
+        return ids
+
+    def encode_word(self, word):
+        if word not in self.cache:
+            self.cache[word] = self.apply_merges(list(word.encode("utf-8")))
+        return self.cache[word]
+
+    def apply_merges(self, ids):
+        while len(ids) > 1:
+            pair = min(zip(ids, ids[1:]), key=lambda p: self.ranks.get(p, inf))
+            if pair not in self.ranks:
+                break
+            ids = merge_word(ids, pair, self.ranks[pair])
+        return ids
+
+    def decode(self, ids):
+        return b"".join(self.vocab[i] for i in ids).decode("utf-8")
+
+    def save(self, path):
+        lines = "".join(f"{a} {b}\n" for a, b in self.merges)
+        Path(path).write_text(lines, encoding="utf-8", newline="\n")
+
+    @classmethod
+    def load(cls, path):
+        lines = Path(path).read_text(encoding="utf-8").splitlines()
+        return cls(tuple(map(int, line.split())) for line in lines)
