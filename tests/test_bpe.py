@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tokenizer.bpe import END_OF_TEXT, END_OF_TEXT_ID, BPETokenizer, pretokenize
+from tokenizer.bpe import END_OF_TEXT, END_OF_TEXT_ID, BPETokenizer, pretokenize, train_reference
 
 KAF = tuple("ک".encode("utf-8"))
 SAMPLE_MERGES = [KAF, (32, 257), (ord("t"), ord("h"))]
@@ -78,6 +78,28 @@ class BPETokenizerTest(unittest.TestCase):
             self.tokenizer.save(path)
             self.assertEqual(path.read_text(encoding="utf-8").splitlines()[0], f"{KAF[0]} {KAF[1]}")
             self.assertEqual(BPETokenizer.load(path).merges, SAMPLE_MERGES)
+
+
+class ReferenceTrainerTest(unittest.TestCase):
+    def test_sanity_check_worked_by_hand(self):
+        a, b, c, d = map(ord, "abcd")
+        expected = [(a, a), (257, a), (258, b), (d, 259), (260, a), (261, c), (259, 262)]
+        self.assertEqual(train_reference("aaabdaaabac", 10), expected)
+
+    def test_tie_goes_to_greater_byte_pair(self):
+        self.assertEqual(train_reference("ab ba", 1), [(ord("b"), ord("a"))])
+
+    def test_special_token_never_merged(self):
+        self.assertEqual(train_reference(END_OF_TEXT * 50 + "xy", 10), [(ord("x"), ord("y"))])
+
+    def test_merges_never_cross_words(self):
+        self.assertEqual(train_reference("x y", 10), [(ord(" "), ord("y"))])
+
+    def test_trained_tokenizer_round_trips(self):
+        text = "اُردُو ایک خوبصورت زبان ہے۔ اردو پاکستان کی قومی زبان ہے۔" * 3
+        tokenizer = BPETokenizer(train_reference(text, 40))
+        self.assertLess(len(tokenizer.encode(text)), len(text.encode("utf-8")))
+        self.assertEqual(tokenizer.decode(tokenizer.encode(text)), text)
 
 
 if __name__ == "__main__":
