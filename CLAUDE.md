@@ -95,3 +95,21 @@ Each answer gets a table or plot plus 2–3 sentences.
 4. **Self-explanatory code.** It should be readable without comments. Use clear names and small functions. No comments unless something is truly non-obvious.
 5. **Strict compliance.** Follow the assignment spec exactly, including file names, IDs, vocabulary size, tie-breaking, splits and formats. When unsure, check the PDF.
 6. **Own work.** Every line of the tokenizer and normalizer is written from scratch, and it must be explainable in a viva.
+
+## Commit Conventions
+
+- Group changes by purpose, with one commit per logical change. Never commit unrelated files together.
+- Follow [Conventional Commits](https://www.conventionalcommits.org/): `<type>: <description>`.
+- Each message is a single line in the imperative mood and lowercase, with no trailing period, no body and no trailers.
+- Types:
+  - `feat`: new functionality
+  - `fix`: bug fix
+  - `docs`: documentation only
+  - `test`: adding or changing tests
+  - `refactor`: code change with no behaviour change
+  - `chore`: config, dependencies, `.gitignore`
+- Examples:
+  - `feat: add voa urdu scraper`
+  - `fix: keep zwnj between letters in normalize`
+  - `docs: add data card`
+  - `chore: add regex and numpy to requirements`
