@@ -74,6 +74,26 @@ This file records every design decision in the project: what was decided, why, a
 - **Decision:** Keep U+200C when it sits between two letters, remove it anywhere else, and collapse repeats.
 - **Why:** Urdu uses ZWNJ on purpose inside compound words, as in بے‌شمار, to keep them visually separate while they remain one word. At a word edge it has no effect, and it would turn `کتاب` and `کتاب‌` into two different tokens.
 
+### D15. Base the normalization map on a character inventory
+- **Decision:** Count the variant, invisible, digit and whitespace code points in a 30 MB sample of every source, then map only the variants that actually occur.
+- **Map:**
+  - ي and ى → ی
+  - ك → ک
+  - ه → ہ
+  - ۀ → ۂ
+  - ة → ۃ
+  - Arabic presentation forms → base letters (NFKC), for example ﷺ → its full phrase
+  - both Arabic digit sets → ASCII
+- **Removed:**
+  - tatweel
+  - soft hyphen
+  - ZWSP, ZWJ and BOM
+  - LRM, RLM and ALM
+  - the bidi embeddings and isolates
+  - the invisible separator (U+2063)
+- **Why the inventory added ة → ۃ:** Arabic teh marbuta appears up to 563 times per million characters (in Wikipedia), alongside the Urdu form ۃ, so it is the same kind of duplicate as yeh and kaf.
+- **Kept as they are:** diacritics, honorific signs (U+0610–U+0614), Urdu punctuation, curly quotes and ornate parentheses. They are legitimate Urdu text.
+
 ### D12. Unify all digits to ASCII
 - **Decision:** Map Arabic-Indic (U+0660–U+0669) and Extended Arabic-Indic (U+06F0–U+06F9) digits to 0–9.
 - **Why:** The PDF asks us to pick one convention. ASCII digits are the most common form in web and news Urdu, and English text uses them too.
