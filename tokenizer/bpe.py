@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 END_OF_TEXT = "<|endoftext|>"
 END_OF_TEXT_ID = 256
-PATTERN = regex.compile(r" ?[\p{L}\p{M}‌]+| ?\p{N}{1,3}| ?[^\s\p{L}\p{M}\p{N}]+|\s+(?!\S)|\s+")
+PATTERN = regex.compile(r" ?[\p{L}\p{M}\u200c]+| ?\p{N}{1,3}| ?[^\s\p{L}\p{M}\p{N}]+|\s+(?!\S)|\s+")
 
 
 def pretokenize(text):

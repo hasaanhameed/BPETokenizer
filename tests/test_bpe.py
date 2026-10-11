@@ -47,7 +47,7 @@ class PretokenizeTest(unittest.TestCase):
         self.assertEqual(pretokenize("اُردُو"), ["اُردُو"])
 
     def test_zwnj_stays_in_word(self):
-        self.assertEqual(pretokenize("بے‌شمار"), ["بے‌شمار"])
+        self.assertEqual(pretokenize("بے\u200cشمار"), ["بے\u200cشمار"])
 
     def test_leading_space_attaches_to_next_word(self):
         self.assertEqual(pretokenize("میں اردو بولتا ہوں"), ["میں", " اردو", " بولتا", " ہوں"])
@@ -119,7 +119,7 @@ class FastTrainerTest(unittest.TestCase):
 
     def test_matches_reference_on_mixed_text(self):
         text = (
-            "اُردُو ایک خوبصورت زبان ہے۔ اردو پاکستان کی قومی زبان ہے اور بے‌شمار لوگ اسے بولتے ہیں۔\n"
+            "اُردُو ایک خوبصورت زبان ہے۔ اردو پاکستان کی قومی زبان ہے اور بے\u200cشمار لوگ اسے بولتے ہیں۔\n"
             "The year 2026 brought 1,234,567 visitors to Lahore, کراچی and Islamabad!\n"
         ) * 20 + END_OF_TEXT + "کتاب کتابیں کتابوں aaaa aaaaa 😀😀"
         self.assert_same_merges(text)
