@@ -1,8 +1,10 @@
-from collections import Counter
+import heapq
+from collections import Counter, defaultdict
 from math import inf
 from pathlib import Path
 
 import regex
+from tqdm import tqdm
 
 END_OF_TEXT = "<|endoftext|>"
 END_OF_TEXT_ID = 256
@@ -62,6 +64,64 @@ def train_reference(text, num_merges):
         merges.append(pair)
         vocab.append(vocab[pair[0]] + vocab[pair[1]])
     return merges
+
+
+def count_words(text):
+    return Counter(split_words(text))
+
+
+def train_fast(word_counts, num_merges, progress=False):
+    words = [list(word.encode("utf-8")) for word in word_counts]
+    freqs = list(word_counts.values())
+    vocab = build_vocab([])
+    pair_counts = Counter()
+    pair_to_words = defaultdict(set)
+    for i, word in enumerate(words):
+        for pair, n in count_pairs(word).items():
+            pair_counts[pair] += n * freqs[i]
+            pair_to_words[pair].add(i)
+    heap = [pair_key(pair, count, vocab) for pair, count in pair_counts.items()]
+    heapq.heapify_max(heap)
+
+    merges = []
+    for _ in tqdm(range(num_merges), disable=not progress):
+        pair = pop_best_pair(heap, pair_counts)
+        if pair is None:
+            break
+        new_id = len(vocab)
+        merges.append(pair)
+        vocab.append(vocab[pair[0]] + vocab[pair[1]])
+
+        changed = set()
+        for i in pair_to_words.pop(pair):
+            old_pairs = count_pairs(words[i])
+            words[i] = merge_word(words[i], pair, new_id)
+            new_pairs = count_pairs(words[i])
+            for p in old_pairs.keys() | new_pairs.keys():
+                delta = new_pairs[p] - old_pairs[p]
+                if delta:
+                    pair_counts[p] += delta * freqs[i]
+                    changed.add(p)
+            for p in old_pairs.keys() - new_pairs.keys() - {pair}:
+                pair_to_words[p].discard(i)
+            for p in new_pairs.keys() - old_pairs.keys():
+                pair_to_words[p].add(i)
+
+        for p in changed:
+            if pair_counts[p] > 0:
+                heapq.heappush_max(heap, pair_key(p, pair_counts[p], vocab))
+            else:
+                del pair_counts[p]
+                pair_to_words.pop(p, None)
+    return merges
+
+
+def pop_best_pair(heap, pair_counts):
+    while heap:
+        count, _, _, a, b = heapq.heappop_max(heap)
+        if pair_counts.get((a, b)) == count:
+            return (a, b)
+    return None
 
 
 class BPETokenizer:
