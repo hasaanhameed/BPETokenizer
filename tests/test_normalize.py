@@ -28,6 +28,9 @@ class TestLetters(unittest.TestCase):
             normalize("\N{ARABIC LETTER HEH WITH YEH ABOVE}"), "\N{ARABIC LETTER HEH GOAL WITH HAMZA ABOVE}"
         )
 
+    def test_arabic_teh_marbuta_becomes_urdu_teh_marbuta(self):
+        self.assertEqual(normalize("\N{ARABIC LETTER TEH MARBUTA}"), "\N{ARABIC LETTER TEH MARBUTA GOAL}")
+
     def test_yeh_with_hamza_survives(self):
         yeh_with_hamza = "\N{ARABIC LETTER YEH WITH HAMZA ABOVE}"
         self.assertEqual(normalize(yeh_with_hamza), yeh_with_hamza)
@@ -46,7 +49,7 @@ class TestRemovedCharacters(unittest.TestCase):
         self.assertEqual(normalize("ک\N{ARABIC TATWEEL}تاب"), "کتاب")
 
     def test_invisible_characters_are_removed(self):
-        invisible = "\N{ZERO WIDTH SPACE}\N{ZERO WIDTH JOINER}\N{LEFT-TO-RIGHT MARK}\N{RIGHT-TO-LEFT MARK}\N{ARABIC LETTER MARK}\N{ZERO WIDTH NO-BREAK SPACE}"
+        invisible = "\N{ZERO WIDTH SPACE}\N{ZERO WIDTH JOINER}\N{LEFT-TO-RIGHT MARK}\N{RIGHT-TO-LEFT MARK}\N{ARABIC LETTER MARK}\N{ZERO WIDTH NO-BREAK SPACE}\N{INVISIBLE SEPARATOR}"
         self.assertEqual(normalize(f"کت{invisible}اب"), "کتاب")
 
 
