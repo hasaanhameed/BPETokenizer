@@ -42,6 +42,7 @@ BPETokenizer/
 │   └── samples/
 ├── tests/
 │   ├── test_normalize.py
+│   ├── test_clean_corpus.py
 │   ├── test_bpe.py
 │   └── compare_trainers.py
 ├── models/urdu_bpe.merges
@@ -49,7 +50,7 @@ BPETokenizer/
 └── data/                      (gitignored)
     ├── downloads/             cached source archives
     ├── raw/                   one JSONL per source
-    ├── clean/                 docs.jsonl, stats.json
+    ├── clean/                 filtered.jsonl, docs.jsonl, stats.json
     └── final/                 train/val/test.txt, train/val.bin
 ```
 
@@ -83,8 +84,8 @@ The scraper also records `url` and `fetched_at` as evidence that we collected th
 | Module | Responsibility |
 |---|---|
 | `normalize.py` | `normalize(text) -> str`, a pure function that unifies Urdu characters. It runs NFC first, then maps character variants, removes tatweel and invisible characters, handles ZWNJ, unifies digits and collapses whitespace. |
-| `clean_corpus.py` | Runs normalize, then the line filter (mostly-Urdu lines), then boilerplate-line removal, then exact-duplicate removal. It records what each step removed in `stats.json`. |
-| `split_corpus.py` | Shuffles documents with a fixed seed and splits them 98/1/1 by document. It writes `<|endoftext|>` after each document. |
+| `clean_corpus.py` | Works in two passes. **Pass 1** runs in parallel over batches: normalize, line filter (mostly-Urdu lines), spam filter (forex and binary options), Wikipedia minimum length. In the original order, it then removes exact duplicates and writes `filtered.jsonl`. **Pass 2** removes boilerplate lines (repeated in 5 or more distinct documents) and writes `docs.jsonl`. It records the documents and bytes left after each step in `stats.json`. |
+| `split_corpus.py` | Shuffles documents with seed 42 and splits them 98/1/1 by document. It writes `<|endoftext|>` after each document, with `\n` line endings only. |
 | `corpus_stats.py` | Corpus totals (MB, documents, words, unique words) for `DATA_CARD.md`. |
 
 ### 3.3 Tokenizer (`tokenizer/`)
@@ -134,7 +135,7 @@ The scraper also records `url` and `fetched_at` as evidence that we collected th
 
 ```
 data/downloads/  ──collection──►  data/raw/*.jsonl
-data/raw/*.jsonl ──clean_corpus──► data/clean/docs.jsonl + stats.json
+data/raw/*.jsonl ──clean_corpus──► data/clean/filtered.jsonl ──► docs.jsonl + stats.json
 data/clean/      ──split_corpus──► data/final/{train,val,test}.txt
 train.txt        ──train_tokenizer──► models/urdu_bpe.merges
 train/val.txt    ──encode_corpus──►   data/final/{train,val}.bin
@@ -158,5 +159,6 @@ No tokenizer library and no Urdu NLP library is used in normalization or the tok
 | Test | Verifies |
 |---|---|
 | `tests/test_normalize.py` | Each normalization rule |
+| `tests/test_clean_corpus.py` | Urdu line filter, spam filter, boilerplate removal |
 | `tests/test_bpe.py` | Lossless round-trip, pre-tokenization, vocabulary layout, tie-breaking |
 | `tests/compare_trainers.py` | The reference and fast trainers learn identical merges on a 1 MB sample |

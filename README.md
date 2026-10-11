@@ -44,17 +44,18 @@ pip install -r requirements.txt
 
 ## Usage
 
-Run every command from the repository root. The commands below follow the planned pipeline, and this section will be updated as each stage is implemented.
+Run every command from the repository root. Steps 1 and 2 are implemented. Step 3 will be updated once the tokenizer is built.
 
 ```bash
-# 1. Collect raw text
+# 1. Collect raw text (VOA takes ~4 hours; downloads are cached in data/downloads/)
 python -m collection.scrape_voa
 python -m collection.download_wikimedia
 python -m collection.download_madlad
 
-# 2. Clean and split
+# 2. Clean, split and report statistics
 python -m cleaning.clean_corpus
 python -m cleaning.split_corpus
+python -m cleaning.corpus_stats
 
 # 3. Train the tokenizer and encode the corpus
 python -m tokenizer.train_tokenizer

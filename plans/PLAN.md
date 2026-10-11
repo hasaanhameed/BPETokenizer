@@ -1,5 +1,20 @@
 # Plan: Urdu BPE Tokenizer, built in phases
 
+## Status
+| Phase | Status |
+|---|---|
+| 1. Collection | ✅ Done. 4 sources, 1.78 GB raw |
+| 2–3. Normalization, cleaning and splits | ✅ Done. 1.30 GB clean, 287,963 docs. See `DATA_CARD.md` |
+| 4. BPE | ⏳ Next |
+| 5. Train and encode | ⏳ |
+| 6. Analysis and report | ⏳ |
+
+The design changes made during implementation are recorded in `DECISION.md`:
+- Urdu News 1M replaced by Wikisource
+- the Wikimedia extraction fixes
+- the forex spam filter
+- parallel cleaning
+
 ## Context
 This is CS 417 Assignment 1. The spec is `Assignment 1 - Urdu BPE Tokenizer from Scratch.pdf`, summarised in `CLAUDE.md`.
 
