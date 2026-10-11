@@ -1,0 +1,5 @@
+regex
+numpy
+tqdm
+requests
+beautifulsoup4
