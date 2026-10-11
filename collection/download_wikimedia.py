@@ -7,6 +7,7 @@ from collection.download import download, session
 
 DUMPS = "https://dumps.wikimedia.org/other/cirrus_search_index/"
 WIKIS = {"wikipedia": "urwiki", "wikisource": "urwikisource"}
+RENDER_ERRORS = re.compile(r"لوا خطا[^۔]*۔|سانچہ:\S+")
 
 
 def latest_dump_date():
@@ -23,8 +24,22 @@ def pages(path):
     with bz2.open(path, "rt", encoding="utf-8") as lines:
         for line in lines:
             page = json.loads(line)
-            if page.get("text"):
+            if page.get("namespace") == 0 and page.get("text"):
                 yield page
+
+
+def without_wikisource_header(page):
+    header = re.match(rf".*? by\s(.+?)\s{page['page_id']}", page["text"])
+    if header is None:
+        return page["text"]
+    rest = page["text"][header.end():]
+    _, found, body = rest.partition(header[1])
+    return body if found else rest
+
+
+def extract_text(source, page):
+    text = without_wikisource_header(page) if source == "wikisource" else page["text"]
+    return RENDER_ERRORS.sub("", text).strip()
 
 
 def main():
@@ -37,7 +52,10 @@ def main():
         with output.open("w", encoding="utf-8") as out:
             for url in dump_files(date, wiki):
                 for page in pages(download(url)):
-                    record = {"id": page["page_id"], "text": page["text"]}
+                    text = extract_text(source, page)
+                    if not text:
+                        continue
+                    record = {"id": page["page_id"], "text": text}
                     out.write(json.dumps(record, ensure_ascii=False) + "\n")
                     count += 1
         print(f"{source}: {count} pages, {output.stat().st_size / 2**20:.1f} MB")
