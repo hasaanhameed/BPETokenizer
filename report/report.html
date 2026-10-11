@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Urdu BPE Tokenizer Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4; margin: 14mm 15mm; }
+  :root { --ink: #1d1d1f; --muted: #5f6368; --rule: #d9dce1; --head: #f2f4f7; --accent: #1f5f8b; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; font-size: 9.6pt; line-height: 1.42; color: var(--ink); background: #fff; margin: 0; }
+  bdi, .ur { font-family: "Noto Naskh Arabic", "Segoe UI", sans-serif; }
+  h1 { font-size: 16pt; margin: 0 0 2px; color: var(--accent); }
+  h2 { font-size: 11.5pt; margin: 14px 0 5px; color: var(--accent); border-bottom: 1px solid var(--rule); padding-bottom: 2px; }
+  h3 { font-size: 10pt; margin: 9px 0 3px; }
+  p { margin: 4px 0 6px; }
+  .meta { color: var(--muted); margin-bottom: 8px; }
+  table { border-collapse: collapse; margin: 5px 0 7px; width: 100%; }
+  th, td { border: 1px solid var(--rule); padding: 2px 5px; text-align: left; vertical-align: middle; }
+  th { background: var(--head); font-weight: 600; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.best { font-weight: 700; }
+  .hex { font-family: Consolas, monospace; font-size: 8.4pt; color: #a33; }
+  .sp { color: #9aa0a6; }
+  .grid td, .grid th { padding: 1px 5px; }
+  .tokens { font-size: 9pt; line-height: 1.9; margin: 3px 0 4px; }
+  .tok { display: inline-block; border: 1px solid var(--rule); border-radius: 3px; padding: 0 4px; margin: 1px 1px; background: #fafbfc; }
+  .tok.bad { border-color: #e3b4b4; background: #fdf3f3; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .note { color: var(--muted); font-size: 8.8pt; }
+  code { font-family: Consolas, monospace; font-size: 8.8pt; background: #f4f5f7; padding: 0 3px; border-radius: 2px; }
+  .page-break { break-before: page; }
+  .keep { break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<h1>Building an Urdu BPE Tokenizer from Scratch</h1>
+<div class="meta">CS 417 Large Language Models · Assignment 1 · NUST SEECS, Spring 2026<br>[Name 1 / Reg. No.] · [Name 2 / Reg. No.]</div>
+
+<h2>Setup in brief</h2>
+<p>We collected <b>1.30 GB</b> of cleaned Urdu text from four sources: VOA Urdu (news, scraped by us), Urdu Wikipedia, Urdu Wikisource (literature) and MADLAD-400 (web). The full details are in <code>DATA_CARD.md</code>. We trained a byte-level BPE tokenizer, written in plain Python, on the 1,276 MB <code>train.txt</code> to exactly <b>50,000 tokens</b>: 256 bytes, then <code>&lt;|endoftext|&gt;</code> as ID 256, then 49,743 merges.</p>
+
+<table class="keep">
+  <tr><th>Training (fast trainer, full train.txt)</th><td>307 s wall-clock on an Intel Core Ultra 7 155U (12 cores, 15.4 GB RAM), Python 3.14</td></tr>
+  <tr><th>Encoded corpus</th><td><code>train.bin</code> 206.3M tokens, <code>val.bin</code> 2.0M tokens (flat <code>uint16</code>)</td></tr>
+  <tr><th>Fast vs reference trainer</th><td>Identical merges on a 1 MB sample of our corpus (from <code>test.txt</code>) for the first 5,000 merges. The fast trainer took 2.0 s and the reference took 1,578 s (about 26 minutes), roughly 790 times slower.</td></tr>
+</table>
+
+<p><b>Pre-tokenization pattern.</b> <code> ?[\p{L}\p{M}\u200c]+| ?\p{N}{1,3}| ?[^\s\p{L}\p{M}\p{N}]+|\s+(?!\S)|\s+</code><br>
+The first branch treats letters, combining marks (<code>\p{M}</code>: zer, zabar, pesh, shadda) and ZWNJ as one word. So <bdi>اُردُو</bdi> stays a single piece instead of breaking at every diacritic, as it does with GPT-2's pattern. As in GPT-2, a leading space belongs to the word that follows it. Numbers are split into chunks of at most three digits, so the tokenizer can't spend merges memorizing long numbers. Every character matches some branch, which keeps encoding lossless. Normalization (Arabic → Urdu letters, all digits → ASCII, ZWNJ kept only between letters) happens before training and is not part of the tokenizer.</p>
+
+<h2>Q1. What did the merges learn?</h2>
+<h3>Merges 1–50</h3>
+<p class="note">␣ marks a leading space. <span class="hex">⟨…⟩</span> marks a token that is not valid UTF-8 on its own, shown as hex bytes.</p>
+<table class='grid'><tr><th>#</th><th>Token</th><th>#</th><th>Token</th><th>#</th><th>Token</th><th>#</th><th>Token</th><th>#</th><th>Token</th></tr>
+<tr><td class='n'>1</td><td><span class="hex">⟨20 d8⟩</span></td><td class='n'>11</td><td><bdi>ن</bdi></td><td class='n'>21</td><td><bdi>یں</bdi></td><td class='n'>31</td><td><span class="sp">␣</span><bdi>ت</bdi></td><td class='n'>41</td><td><bdi>ع</bdi></td></tr>
+<tr><td class='n'>2</td><td><bdi>ی</bdi></td><td class='n'>12</td><td><span class="sp">␣</span><bdi>ا</bdi></td><td class='n'>22</td><td><span class="sp">␣</span><bdi>س</bdi></td><td class='n'>32</td><td><span class="sp">␣</span><bdi>کی</bdi></td><td class='n'>42</td><td><span class="sp">␣</span><bdi>و</bdi></td></tr>
+<tr><td class='n'>3</td><td><bdi>ا</bdi></td><td class='n'>13</td><td><bdi>ل</bdi></td><td class='n'>23</td><td><span class="sp">␣</span><bdi>ب</bdi></td><td class='n'>33</td><td><span class="sp">␣</span><bdi>پ</bdi></td><td class='n'>43</td><td><bdi>ق</bdi></td></tr>
+<tr><td class='n'>4</td><td><bdi>ک</bdi></td><td class='n'>14</td><td><bdi>ت</bdi></td><td class='n'>24</td><td><bdi>د</bdi></td><td class='n'>34</td><td><span class="sp">␣</span><bdi>ن</bdi></td><td class='n'>44</td><td><span class="sp">␣</span><bdi>ہے</bdi></td></tr>
+<tr><td class='n'>5</td><td><span class="hex">⟨20 d9⟩</span></td><td class='n'>15</td><td><bdi>م</bdi></td><td class='n'>25</td><td><bdi>ھ</bdi></td><td class='n'>35</td><td><bdi>ار</bdi></td><td class='n'>45</td><td><bdi>ف</bdi></td></tr>
+<tr><td class='n'>6</td><td><bdi>ر</bdi></td><td class='n'>16</td><td><span class="sp">␣</span><bdi>م</bdi></td><td class='n'>26</td><td><bdi>۔</bdi></td><td class='n'>36</td><td><bdi>ان</bdi></td><td class='n'>46</td><td><span class="sp">␣</span><bdi>اس</bdi></td></tr>
+<tr><td class='n'>7</td><td><bdi>و</bdi></td><td class='n'>17</td><td><bdi>س</bdi></td><td class='n'>27</td><td><bdi>ب</bdi></td><td class='n'>37</td><td><span class="sp">␣</span><bdi>ج</bdi></td><td class='n'>47</td><td><span class="sp">␣</span><bdi>اور</bdi></td></tr>
+<tr><td class='n'>8</td><td><bdi>ہ</bdi></td><td class='n'>18</td><td><bdi>ں</bdi></td><td class='n'>28</td><td><bdi>گ</bdi></td><td class='n'>38</td><td><span class="sp">␣</span><bdi>میں</bdi></td><td class='n'>48</td><td><span class="sp">␣</span><bdi>ل</bdi></td></tr>
+<tr><td class='n'>9</td><td><bdi>ے</bdi></td><td class='n'>19</td><td><span class="hex">⟨d8 a7 d8⟩</span></td><td class='n'>29</td><td><span class="sp">␣</span><bdi>کے</bdi></td><td class='n'>39</td><td><bdi>ٹ</bdi></td><td class='n'>49</td><td><bdi>ائ</bdi></td></tr>
+<tr><td class='n'>10</td><td><span class="sp">␣</span><bdi>ک</bdi></td><td class='n'>20</td><td><span class="sp">␣</span><bdi>ہ</bdi></td><td class='n'>30</td><td><bdi>ور</bdi></td><td class='n'>40</td><td><span class="sp">␣</span><bdi>د</bdi></td><td class='n'>50</td><td><bdi>ری</bdi></td></tr>
+</table>
+
+<h3>Every 5,000th merge</h3>
+<table class='grid'><tr><th>#</th><td class='n'>5,000</td><td class='n'>10,000</td><td class='n'>15,000</td><td class='n'>20,000</td><td class='n'>25,000</td><td class='n'>30,000</td><td class='n'>35,000</td><td class='n'>40,000</td><td class='n'>45,000</td><td class='n'>49,743</td></tr>
+<tr><th>Token</th><td><span class="sp">␣</span><bdi>مسکر</bdi></td><td><span class="sp">␣</span><bdi>فرینڈ</bdi></td><td><span class="sp">␣</span><bdi>ولاد</bdi></td><td><span class="sp">␣</span><bdi>محافظوں</bdi></td><td><bdi>ged</bdi></td><td><span class="sp">␣</span><bdi>تیندوے</bdi></td><td><span class="sp">␣</span><bdi>372</bdi></td><td><bdi>وہیں</bdi></td><td><span class="sp">␣</span><bdi>سمبل</bdi></td><td><span class="sp">␣</span><bdi>چانڈیو</bdi></td></tr></table>
+
+<p><b>Rebuilding letters.</b> Every Urdu letter is two bytes in UTF-8, so most early merges just put letters back together: <b>22 of the first 50</b> merges join two bytes into one letter, starting with <bdi>ی</bdi>, <bdi>ا</bdi> and <bdi>ک</bdi>. The order follows letter frequency. Rare letters come much later (<bdi>ژ</bdi> at merge 1,177), and so do diacritics (zer at 164, pesh at 225). Over the whole vocabulary, 325 merges rebuild a two-byte character.</p>
+<p><b>Invalid UTF-8 tokens.</b> Only <b>3 of the first 50</b> merges (1, 5 and 19) and <b>208 of all 49,743</b> (0.4%) are not valid UTF-8 on their own. Merge 1 is a space plus the byte <code>d8</code>, which is the first half of most common letters. Nearly every Urdu word starts with "space + d8/d9", so this pair is counted more often than any complete letter. These half-letters are stepping stones: merge 12 (<span class="sp">␣</span><bdi>ا</bdi>) is built from merge 1, and merge 49 (<bdi>ائ</bdi>) from merge 19. The later invalid tokens are fragments of 3-byte characters such as curly quotes and dashes (<code>e2 80</code>), plus some Hindi and Bengali script that leaked in through Wikipedia.</p>
+<p><b>First whole word.</b> Merge <b>29</b> gives <span class="sp">␣</span><bdi>کے</bdi> ("of"), which appears 61,451 times in <code>test.txt</code>. It's followed soon after by <span class="sp">␣</span><bdi>کی</bdi> (32), <span class="sp">␣</span><bdi>میں</bdi> (38), <span class="sp">␣</span><bdi>ہے</bdi> (44) and <span class="sp">␣</span><bdi>اور</bdi> (47). These are the postpositions and helper verbs that hold every Urdu sentence together. By merge 5,000 the tokenizer is adding full content words. By the last merges it is adding rare names such as <span class="sp">␣</span><bdi>چانڈیو</bdi> (Chandio), which shows the vocabulary has started to fit corpus-specific words.</p>
+
+<h3>The 20 longest tokens</h3>
+<table class='grid'><tr><th>Merge</th><th>Token</th><th>Chars</th><th>Merge</th><th>Token</th><th>Chars</th></tr>
+<tr><td class='n'>40,417</td><td><span class="sp">␣</span><bdi>hadithtransmitters</bdi></td><td class='n'>19</td><td class='n'>49,101</td><td><span class="sp">␣</span><bdi>Nottinghamshire</bdi></td><td class='n'>16</td></tr>
+<tr><td class='n'>36,859</td><td><span class="sp">␣</span><bdi>shiaonlinelibrary</bdi></td><td class='n'>18</td><td class='n'>3,083</td><td><span class="sp">␣</span><bdi>CricketArchive</bdi></td><td class='n'>15</td></tr>
+<tr><td class='n'>37,216</td><td><bdi>theatreworldawards</bdi></td><td class='n'>18</td><td class='n'>4,728</td><td><bdi>snaccooperative</bdi></td><td class='n'>15</td></tr>
+<tr><td class='n'>40,831</td><td><bdi>islamansiklopedisi</bdi></td><td class='n'>18</td><td class='n'>10,215</td><td><span class="sp">␣</span><bdi>انسائیکلوپیڈیا</bdi></td><td class='n'>15</td></tr>
+<tr><td class='n'>2,692</td><td><bdi>minorplanetcenter</bdi></td><td class='n'>17</td><td class='n'>18,763</td><td><span class="sp">␣</span><bdi>Administration</bdi></td><td class='n'>15</td></tr>
+<tr><td class='n'>15,494</td><td><bdi>githubusercontent</bdi></td><td class='n'>17</td><td class='n'>19,888</td><td><span class="sp">␣</span><bdi>Transportation</bdi></td><td class='n'>15</td></tr>
+<tr><td class='n'>26,115</td><td><bdi>۔۔۔۔۔۔۔۔۔۔۔۔۔۔۔۔</bdi></td><td class='n'>16</td><td class='n'>20,864</td><td><span class="sp">␣</span><bdi>Internationals</bdi></td><td class='n'>15</td></tr>
+<tr><td class='n'>31,975</td><td><bdi>*-*-*-*-*-*-*-*-</bdi></td><td class='n'>16</td><td class='n'>21,507</td><td><span class="sp">␣</span><bdi>cryptocurrency</bdi></td><td class='n'>15</td></tr>
+<tr><td class='n'>35,132</td><td><span class="sp">␣</span><bdi>Recommendations</bdi></td><td class='n'>16</td><td class='n'>23,549</td><td><span class="sp">␣</span><bdi>Synchronkartei</bdi></td><td class='n'>15</td></tr>
+<tr><td class='n'>40,166</td><td><span class="sp">␣</span><bdi>Gloucestershire</bdi></td><td class='n'>16</td><td class='n'>28,865</td><td><bdi>frauendatenbank</bdi></td><td class='n'>15</td></tr>
+</table>
+<p>Measured in characters, the longest tokens are mostly English, and most of them aren't ordinary words. They are pieces of website names from Wikipedia's reference sections (<code>githubusercontent</code>, <code>minorplanetcenter</code>), repeated on thousands of pages, plus separator lines made of <bdi>۔</bdi> and <code>*-</code>. The longest real Urdu tokens are loanwords such as <span class="sp">␣</span><bdi>انسائیکلوپیڈیا</bdi> (encyclopedia) and <span class="sp">␣</span><bdi>انٹرکانٹینینٹل</bdi> (intercontinental). Each Urdu character costs two bytes, so the same merge budget covers fewer Urdu characters. The table shows where the corpus is still noisy: reference boilerplate in Wikipedia uses up some merges.</p>
+
+<h2 class="page-break">Q2. How does it compare with existing tokenizers?</h2>
+<p>Tokens per word, where words are counted by splitting on whitespace. Lower is better. <code>test.txt</code> is our held-out 1% split (2,880 documents). The seven samples are short passages we wrote or picked by hand, and they're in <code>analysis/samples/</code>.</p>
+<table class="keep">
+  <tr><th>Input</th><th class="n">Words</th><th class="n">Ours</th><th class="n">GPT-2 (<code>gpt2</code>)</th><th class="n"><code>o200k_base</code></th></tr>
+  <tr><td><b>test.txt</b></td><td class="num">1,701,409</td><td class="num best">1.29</td><td class="num">5.77</td><td class="num">1.71</td></tr>
+  <tr><td>News</td><td class="num">68</td><td class="num best">1.06</td><td class="num">6.10</td><td class="num">1.35</td></tr>
+  <tr><td>Poetry (Ghalib, Iqbal)</td><td class="num">51</td><td class="num best">1.14</td><td class="num">5.61</td><td class="num">1.57</td></tr>
+  <tr><td>Urdu with English words</td><td class="num">43</td><td class="num">1.37</td><td class="num">3.88</td><td class="num best">1.16</td></tr>
+  <tr><td>Roman Urdu</td><td class="num">34</td><td class="num">2.56</td><td class="num">2.32</td><td class="num best">1.97</td></tr>
+  <tr><td>Numbers and dates</td><td class="num">44</td><td class="num best">1.52</td><td class="num">5.27</td><td class="num">1.86</td></tr>
+  <tr><td>Text with diacritics</td><td class="num">29</td><td class="num best">1.83</td><td class="num">7.48</td><td class="num">2.83</td></tr>
+  <tr><td>Personal names</td><td class="num">33</td><td class="num best">1.48</td><td class="num">7.48</td><td class="num">2.36</td></tr>
+</table>
+<p>On ordinary Urdu our tokenizer is clearly the most efficient. It uses 1.29 tokens per word on <code>test.txt</code>. <code>o200k_base</code> needs 33% more tokens, and GPT-2 needs about <b>4.5 times as many</b>, because its English-trained vocabulary has almost no Urdu merges and falls back to bytes. Our news and poetry samples are close to one token per word. This matters for Assignment 2: the same context window will hold several times more Urdu text.</p>
+<p>The advantage disappears outside Urdu script. With English words mixed in, and especially in Roman Urdu, <code>o200k_base</code> wins, and for Roman Urdu even GPT-2 beats us. Our 50,000 tokens were spent almost entirely on Urdu, while the other two tokenizers were trained on huge amounts of Latin-script text. Diacritics and names cost us more than plain news, but we still use far fewer tokens than both other tokenizers there.</p>
+
+<h2>Q3. Three inputs our tokenizer handles badly</h2>
+<p class="note">Below, each token is shown in its own box. Red boxes are byte fragments that are not valid UTF-8 on their own.</p>
+
+<div class="keep">
+<h3>1. Roman Urdu: 2.64 tokens/word (the same sentence in Urdu script: 1.00)</h3>
+<div class="tokens">
+<span class="tok">M</span><span class="tok">uj</span><span class="tok">he</span><span class="tok">␣Urdu</span><span class="tok">␣b</span><span class="tok">ol</span><span class="tok">na</span><span class="tok">␣b</span><span class="tok">oh</span><span class="tok">at</span><span class="tok">␣p</span><span class="tok">as</span><span class="tok">and</span><span class="tok">␣h</span><span class="tok">ai</span><span class="tok">␣le</span><span class="tok">kin</span><span class="tok">␣l</span><span class="tok">ikh</span><span class="tok">na</span><span class="tok">␣m</span><span class="tok">ush</span><span class="tok">k</span><span class="tok">il</span><span class="tok">␣l</span><span class="tok">ag</span><span class="tok">ta</span><span class="tok">␣h</span><span class="tok">ai</span>
+</div>
+<p>"Mujhe Urdu bolna bohat pasand hai lekin likhna mushkil lagta hai" becomes 29 tokens. The same sentence in Urdu script becomes 11, one per word. Our cleaning kept only Arabic-script lines, so the tokenizer saw almost no Roman Urdu (a gap noted in the data card). The few Latin merges it learned come from English names and references in Wikipedia. So common Roman Urdu words such as <i>bohat</i>, <i>hai</i> and <i>mushkil</i> are split into 2–4 pieces. <code>o200k_base</code> does better here (1.82 tokens/word).</p>
+</div>
+
+<div class="keep">
+<h3>2. Text typed with Arabic letters and digits: 2.80 tokens/word (after normalization: 1.07)</h3>
+<div class="tokens">
+<span class="tok"><bdi>پا</bdi></span><span class="tok bad">d9</span><span class="tok bad">83</span><span class="tok"><bdi>ستان</bdi></span><span class="tok bad">20 db</span><span class="tok bad">b1</span><span class="tok bad">db</span><span class="tok bad">b4</span><span class="tok">␣<bdi>اگست</bdi></span><span class="tok bad">20 db</span><span class="tok bad">b1</span><span class="tok bad">db</span><span class="tok bad">b9</span><span class="tok bad">db</span><span class="tok bad">b4</span><span class="tok bad">db</span><span class="tok bad">b7</span><span class="tok bad">20 d9</span><span class="tok bad">83</span><span class="tok"><bdi>و</bdi></span><span class="tok">␣<bdi>آزاد</bdi></span><span class="tok bad">20 d9</span><span class="tok bad">87</span><span class="tok"><bdi>وا</bdi></span><span class="tok">…</span>
+</div>
+<p>This sentence, <span class="ur">"پاكستان ۱۴ اگست ۱۹۴۷ كو آزاد هوا…"</span>, was typed with Arabic kaf <bdi>ك</bdi>, heh <bdi>ه</bdi>, yeh <bdi>ي</bdi> and Eastern-Arabic digits. That's common when someone uses an Arabic keyboard. These characters look the same as the Urdu ones, but they are different code points. Our normalizer maps all of them to Urdu letters and ASCII digits before training, so the tokenizer never saw them and learned no merges for them. Each one falls back to two raw bytes and breaks the word around it, so <bdi>پاكستان</bdi> becomes four tokens instead of one. The fix is to run <code>normalize()</code> before <code>encode()</code>, as our pipeline does. The tokenizer itself must stay lossless, so it doesn't normalize.</p>
+</div>
+
+<div class="keep">
+<h3>3. Emoji: 5.33 tokens/word (the same text without emoji: 1.00)</h3>
+<div class="tokens">
+<span class="tok"><bdi>بہت</bdi></span><span class="tok">␣<bdi>خوب</bdi></span><span class="tok bad">20 f0 9f 98</span><span class="tok bad">82</span><span class="tok bad">f0 9f</span><span class="tok bad">98</span><span class="tok bad">82</span><span class="tok bad">f0 9f</span><span class="tok bad">94</span><span class="tok bad">a5</span><span class="tok bad">f0 9f</span><span class="tok bad">91</span><span class="tok bad">8d</span><span class="tok bad">f0 9f</span><span class="tok bad">8f</span><span class="tok bad">bd</span>
+</div>
+<p>"<span class="ur">بہت خوب</span> 😂😂🔥👍🏽" uses 2 tokens for the words and 14 for four emoji. Each emoji is 4 bytes in UTF-8, and a thumbs-up with a skin tone is two code points (8 bytes). Our corpus is edited news, encyclopedia and literature text, which contains almost no emoji. So only a few shared byte prefixes such as <code>f0 9f</code> became merges, and each emoji still costs 2–3 tokens of meaningless byte fragments. Nothing is lost, and decoding still gives back the exact text. But chat-style Urdu would be expensive to model. <code>o200k_base</code>, trained on web and chat data, uses 10 tokens for the same input.</p>
+</div>
+
+<p class="note">Reproduce: <code>python -m analysis.merges_report</code> (Q1), <code>python -m analysis.compare_tokenizers</code> (Q2), <code>python -m analysis.failure_cases</code> (Q3), <code>python -m tests.compare_trainers --input data/final/test.txt --merges 5000</code> (trainer check).</p>
+
+</body>
+</html>
