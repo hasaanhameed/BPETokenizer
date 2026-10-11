@@ -36,9 +36,9 @@ BPETokenizer/                  (repo root)
 ├── plans/
 │   └── PLAN.md
 ├── collection/                # one script per source -> data/raw/<source>.jsonl
+│   ├── download.py            # shared cached downloader
 │   ├── scrape_voa.py
-│   ├── download_wikipedia.py
-│   ├── download_urdu_news.py
+│   ├── download_wikimedia.py  # Wikipedia + Wikisource
 │   └── download_madlad.py
 ├── cleaning/
 │   ├── normalize.py           # normalize(text)
@@ -72,9 +72,12 @@ The goal is at least 3 sources across at least 2 genres, with at least 50 MB scr
 | Script | Source | Genre | Licence | How |
 |---|---|---|---|---|
 | `scrape_voa.py` | VOA Urdu (`www.urduvoa.com`, 133k articles from 2010–2025) | news | **US public domain** (VOA terms). Skip items credited to AP, AFP or Reuters. | Read the `sitemap.xml` index, then `sitemap_445_{1..7}.xml.gz` (gzipped `<loc>` entries, all `/a/` articles). Check URLs with `urllib.robotparser`, send about 1 request per second with an identifying User-Agent, and resume where it stopped. Use bs4 to take the title from `h1.pg-title` and the body from the `p` tags in `#article-content div.wsw`, skipping pages where it's empty (video or audio). Save `url` + `fetched_at` as evidence. Expect ~300–400 MB if run in full; at least 100 MB is required. |
-| `download_wikipedia.py` | Urdu Wikipedia, CirrusSearch dump (`dumps.wikimedia.org/other/cirrus_search_index/<date>/index_name=urwiki_content/…json.bz2`, ~1.24 GB bz2) | encyclopedia | CC BY-SA 4.0 | Stream with stdlib `bz2` + `json` and keep each page's plain-text `text` field. This avoids writing a wiki-markup parser. |
-| `download_urdu_news.py` | Urdu News Dataset 1M (Mendeley 834vsxnb99 v4, one 2.09 GB CSV) | news | CC BY 4.0 (research use) | Stream rows with `csv` and keep the article text column. |
-| `download_madlad.py` | MADLAD-400 `ur_clean_0000.jsonl.gz` (1.31 GB) | web (blogs, religion, mixed) | CC BY 4.0 / ODC-BY | Stream with stdlib `gzip` + `json`. |
+| `download_wikimedia.py` | Urdu Wikipedia and Urdu Wikisource, CirrusSearch dumps (`dumps.wikimedia.org/other/cirrus_search_index/<date>/index_name={urwiki,urwikisource}_content/…json.bz2`; Wikipedia is ~1.24 GB bz2) | encyclopedia + literature | CC BY-SA 4.0 | Read with stdlib `bz2` + `json` and keep each page's plain-text `text` field. This avoids writing a wiki-markup parser. Wikimedia requires a descriptive User-Agent. |
+| `download_madlad.py` | MADLAD-400 `ur_clean_0000.jsonl.gz` (1.31 GB) | web (blogs, religion, mixed) | CC BY 4.0 / ODC-BY | Read with stdlib `gzip` + `json`. Line breaks are stored as the literal characters `\n` and `\t`, so convert them to real ones. Stop at 700 MB. |
+
+`collection/download.py` provides `download(url)`. It caches each file in `data/downloads/` (writing to a `.part` file first, so a broken download is never reused) and shows a `tqdm` progress bar.
+
+**Urdu News Dataset 1M was dropped.** Its preprocessing deleted the letter آ (`اسلام باد` instead of `اسلام آباد`, `خری` instead of `آخری`) and all punctuation, so sentences run together. Those words can't be repaired, and training on them would teach broken tokens. Wikisource replaces it and adds a literature genre.
 
 **News sites we're not scraping:**
 - BBC Urdu: its robots.txt forbids building datasets.
@@ -87,14 +90,12 @@ The goal is at least 3 sources across at least 2 genres, with at least 50 MB scr
 - CC-100: it has no licence.
 - UFAL: it is sentence-per-line with no document boundaries, which clashes with the split-by-document rule.
 
-**Target (confirmed):** about 1 GB of cleaned text from 4 sources across 3 genres.
+**Target (confirmed):** about 1 GB of cleaned text from 4 sources across 4 genres (news, encyclopedia, literature, web).
 
 **Rough budget:**
-- VOA: 100–150 MB
-- Wikipedia: all of it, whatever survives cleaning
-- News 1M and MADLAD: split the remaining space
-
-Each `download_*.py` stops streaming once it reaches a fixed MB constant, so news doesn't swamp everything else.
+- VOA: 150 MB
+- Wikipedia and Wikisource: all of it
+- MADLAD: up to 700 MB, adjusted once the other sizes are known
 
 **Verify:** each script prints the document count and MB. Then open a few random documents per source and check them by eye.
 

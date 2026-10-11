@@ -23,9 +23,9 @@ BPETokenizer/
 ├── CLAUDE.md  ARCHITECTURE.md  README.md  DATA_CARD.md  requirements.txt  .gitignore
 ├── plans/PLAN.md
 ├── collection/
+│   ├── download.py
 │   ├── scrape_voa.py
-│   ├── download_wikipedia.py
-│   ├── download_urdu_news.py
+│   ├── download_wikimedia.py
 │   └── download_madlad.py
 ├── cleaning/
 │   ├── normalize.py
@@ -64,12 +64,13 @@ BPETokenizer/
 ### 3.1 Collection (`collection/`)
 There is one script per source. Each one downloads or scrapes, pulls out the plain text, and writes one document per line.
 
-| Script | Source | Genre |
-|---|---|---|
-| `scrape_voa.py` | VOA Urdu (self-scraped, public domain) | News |
-| `download_wikipedia.py` | Urdu Wikipedia CirrusSearch dump | Encyclopedia |
-| `download_urdu_news.py` | Urdu News Dataset 1M (Mendeley) | News |
-| `download_madlad.py` | MADLAD-400 `ur_clean` | Web |
+| Script | Source | Genre | Output |
+|---|---|---|---|
+| `scrape_voa.py` | VOA Urdu (self-scraped, public domain) | News | `voa.jsonl` |
+| `download_wikimedia.py` | Urdu Wikipedia and Wikisource CirrusSearch dumps | Encyclopedia, literature | `wikipedia.jsonl`, `wikisource.jsonl` |
+| `download_madlad.py` | MADLAD-400 `ur_clean` | Web | `madlad.jsonl` |
+
+`download.py` is the shared downloader. `download(url)` caches each file in `data/downloads/` and sends a descriptive User-Agent.
 
 **Raw document format** (`data/raw/<source>.jsonl`):
 ```json

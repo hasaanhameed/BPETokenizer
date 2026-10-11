@@ -48,8 +48,7 @@ Run every command from the repository root. The commands below follow the planne
 ```bash
 # 1. Collect raw text
 python -m collection.scrape_voa
-python -m collection.download_wikipedia
-python -m collection.download_urdu_news
+python -m collection.download_wikimedia
 python -m collection.download_madlad
 
 # 2. Clean and split
