@@ -3,7 +3,15 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tokenizer.bpe import END_OF_TEXT, END_OF_TEXT_ID, BPETokenizer, pretokenize, train_reference
+from tokenizer.bpe import (
+    END_OF_TEXT,
+    END_OF_TEXT_ID,
+    BPETokenizer,
+    count_words,
+    pretokenize,
+    train_fast,
+    train_reference,
+)
 
 KAF = tuple("ک".encode("utf-8"))
 SAMPLE_MERGES = [KAF, (32, 257), (ord("t"), ord("h"))]
@@ -100,6 +108,27 @@ class ReferenceTrainerTest(unittest.TestCase):
         tokenizer = BPETokenizer(train_reference(text, 40))
         self.assertLess(len(tokenizer.encode(text)), len(text.encode("utf-8")))
         self.assertEqual(tokenizer.decode(tokenizer.encode(text)), text)
+
+
+class FastTrainerTest(unittest.TestCase):
+    def assert_same_merges(self, text, num_merges=100_000):
+        self.assertEqual(train_fast(count_words(text), num_merges), train_reference(text, num_merges))
+
+    def test_matches_reference_on_sanity_check(self):
+        self.assert_same_merges("aaabdaaabac")
+
+    def test_matches_reference_on_mixed_text(self):
+        text = (
+            "اُردُو ایک خوبصورت زبان ہے۔ اردو پاکستان کی قومی زبان ہے اور بے‌شمار لوگ اسے بولتے ہیں۔\n"
+            "The year 2026 brought 1,234,567 visitors to Lahore, کراچی and Islamabad!\n"
+        ) * 20 + END_OF_TEXT + "کتاب کتابیں کتابوں aaaa aaaaa 😀😀"
+        self.assert_same_merges(text)
+
+    def test_matches_reference_on_random_tie_heavy_text(self):
+        rng = random.Random(2)
+        for _ in range(20):
+            text = "".join(rng.choice("ab cا\n") for _ in range(400))
+            self.assert_same_merges(text)
 
 
 if __name__ == "__main__":
