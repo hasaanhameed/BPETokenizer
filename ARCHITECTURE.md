@@ -1,0 +1,161 @@
+# Architecture
+
+## 1. Overview
+
+The system is a linear pipeline in four stages. Each stage reads only the files the previous stage wrote, so you can rerun any stage on its own.
+
+```
+collection  ──►  cleaning  ──►  tokenizer  ──►  analysis
+ raw text        clean splits    merges + .bin   report tables
+```
+
+| Stage | Responsibility | Input | Output |
+|---|---|---|---|
+| Collection | Get raw Urdu documents | Web / dataset URLs | `data/raw/<source>.jsonl` |
+| Cleaning | Normalize, filter, deduplicate, split | `data/raw/*.jsonl` | `data/final/{train,val,test}.txt` |
+| Tokenizer | Train byte-level BPE; encode corpus | `train.txt`, `val.txt` | `models/urdu_bpe.merges`, `data/final/{train,val}.bin` |
+| Analysis | Answer Part C questions | Tokenizer, `test.txt`, samples | Tables for `report/report.pdf` |
+
+## 2. Directory Layout
+
+```
+BPETokenizer/
+├── CLAUDE.md  ARCHITECTURE.md  README.md  DATA_CARD.md  requirements.txt  .gitignore
+├── plans/PLAN.md
+├── collection/
+│   ├── scrape_voa.py
+│   ├── download_wikipedia.py
+│   ├── download_urdu_news.py
+│   └── download_madlad.py
+├── cleaning/
+│   ├── normalize.py
+│   ├── clean_corpus.py
+│   ├── split_corpus.py
+│   └── corpus_stats.py
+├── tokenizer/
+│   ├── bpe.py
+│   ├── train_tokenizer.py
+│   └── encode_corpus.py
+├── analysis/
+│   ├── merges_report.py
+│   ├── compare_tokenizers.py
+│   └── samples/
+├── tests/
+│   ├── test_normalize.py
+│   ├── test_bpe.py
+│   └── compare_trainers.py
+├── models/urdu_bpe.merges
+├── report/report.pdf
+└── data/                      (gitignored)
+    ├── downloads/             cached source archives
+    ├── raw/                   one JSONL per source
+    ├── clean/                 docs.jsonl, stats.json
+    └── final/                 train/val/test.txt, train/val.bin
+```
+
+**Conventions**
+- The root holds only documentation and configuration. All code lives in folders.
+- Every script runs from the repository root as a module, for example `python -m cleaning.clean_corpus`.
+- Imports are absolute, for example `from cleaning.normalize import normalize`.
+- Files named by the assignment keep those exact names.
+
+## 3. Components
+
+### 3.1 Collection (`collection/`)
+There is one script per source. Each one downloads or scrapes, pulls out the plain text, and writes one document per line.
+
+| Script | Source | Genre |
+|---|---|---|
+| `scrape_voa.py` | VOA Urdu (self-scraped, public domain) | News |
+| `download_wikipedia.py` | Urdu Wikipedia CirrusSearch dump | Encyclopedia |
+| `download_urdu_news.py` | Urdu News Dataset 1M (Mendeley) | News |
+| `download_madlad.py` | MADLAD-400 `ur_clean` | Web |
+
+**Raw document format** (`data/raw/<source>.jsonl`):
+```json
+{"id": "...", "text": "..."}
+```
+The scraper also records `url` and `fetched_at` as evidence that we collected the text ourselves.
+
+### 3.2 Cleaning (`cleaning/`)
+
+| Module | Responsibility |
+|---|---|
+| `normalize.py` | `normalize(text) -> str`, a pure function that unifies Urdu characters. It runs NFC first, then maps character variants, removes tatweel and invisible characters, handles ZWNJ, unifies digits and collapses whitespace. |
+| `clean_corpus.py` | Runs normalize, then the line filter (mostly-Urdu lines), then boilerplate-line removal, then exact-duplicate removal. It records what each step removed in `stats.json`. |
+| `split_corpus.py` | Shuffles documents with a fixed seed and splits them 98/1/1 by document. It writes `<|endoftext|>` after each document. |
+| `corpus_stats.py` | Corpus totals (MB, documents, words, unique words) for `DATA_CARD.md`. |
+
+### 3.3 Tokenizer (`tokenizer/`)
+
+| Module | Responsibility |
+|---|---|
+| `bpe.py` | The `BPETokenizer` class (`encode`, `decode`, `save`, `load`) and two trainers: a reference trainer and a fast one. |
+| `train_tokenizer.py` | Counts pre-tokenized words in `train.txt` in parallel, trains 49,743 merges and saves `models/urdu_bpe.merges`. It reports the wall-clock time. |
+| `encode_corpus.py` | Encodes `train.txt` and `val.txt` into flat `uint16` NumPy arrays (`.bin`). |
+
+**Vocabulary layout**
+
+| IDs | Meaning |
+|---|---|
+| 0–255 | Raw bytes |
+| 256 | `<|endoftext|>`, never split and never merged |
+| 257–49,999 | Merges, in the order they were learned (49,743 of them) |
+
+**Pre-tokenization pattern** (`regex` module):
+```
+ ?[\p{L}\p{M}\u200c]+| ?\p{N}{1,3}| ?[^\s\p{L}\p{M}\p{N}]+|\s+(?!\S)|\s+
+```
+- Letters, combining marks and ZWNJ form one word, so diacritics never split a word.
+- A leading space attaches to the following word.
+- Every character matches some branch, so encoding is lossless.
+
+**Training**
+- **Reference trainer:** recounts every pair after every merge. It is used only to verify the fast trainer.
+- **Fast trainer:**
+  - counts each unique word once, weighted by its frequency;
+  - keeps an index from each pair to the words that contain it;
+  - after a merge, updates counts only for the words that contained the merged pair;
+  - picks the next pair from a max-heap and skips stale entries when it pops them.
+- **Tie-break:** among pairs with the highest count, pick the pair that is greatest when compared as a tuple of bytes.
+
+**Saved tokenizer format** (`models/urdu_bpe.merges`): plain text with one merge per line, `<id_a> <id_b>`, in the order learned. The full vocabulary is rebuilt from these merges when the file is loaded.
+
+### 3.4 Analysis (`analysis/`)
+
+| Module | Report question |
+|---|---|
+| `merges_report.py` | Q1. Selected merges as decoded text, two-byte letter rebuilds, invalid-UTF-8 tokens, the first whole word and the 20 longest tokens. |
+| `compare_tokenizers.py` | Q2. Tokens per word for our tokenizer, `gpt2` and `o200k_base` on `test.txt` and the 7 hand-picked samples. |
+| `samples/` | The 7 hand-picked inputs. They also supply the Q3 failure cases. |
+
+## 4. Data Flow
+
+```
+data/downloads/  ──collection──►  data/raw/*.jsonl
+data/raw/*.jsonl ──clean_corpus──► data/clean/docs.jsonl + stats.json
+data/clean/      ──split_corpus──► data/final/{train,val,test}.txt
+train.txt        ──train_tokenizer──► models/urdu_bpe.merges
+train/val.txt    ──encode_corpus──►   data/final/{train,val}.bin
+```
+
+## 5. Dependencies
+
+| Package | Used by |
+|---|---|
+| Python standard library | All stages |
+| `requests`, `beautifulsoup4` | Collection |
+| `regex` | Pre-tokenization |
+| `numpy` | `.bin` output |
+| `tqdm` | Progress bars |
+| `tiktoken` | Analysis only, for comparison |
+
+No tokenizer library and no Urdu NLP library is used in normalization or the tokenizer.
+
+## 6. Testing
+
+| Test | Verifies |
+|---|---|
+| `tests/test_normalize.py` | Each normalization rule |
+| `tests/test_bpe.py` | Lossless round-trip, pre-tokenization, vocabulary layout, tie-breaking |
+| `tests/compare_trainers.py` | The reference and fast trainers learn identical merges on a 1 MB sample |
