@@ -86,6 +86,7 @@ Each answer gets a table or plot plus 2–3 sentences.
 
 - **`ARCHITECTURE.md`**: the system design, including directory layout, components, data formats, data flow and conventions. Follow it, and update it whenever the design changes.
 - **`plans/PLAN.md`**: the phased implementation plan, with research notes and the reasoning behind each decision.
+- **`DECISION.md`**: the decision log. Every design decision is recorded there with its reason and the alternatives rejected. Add an entry whenever a new decision is made.
 
 ## Development Rules
 

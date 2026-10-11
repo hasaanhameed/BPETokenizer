@@ -20,7 +20,7 @@ collection  ──►  cleaning  ──►  tokenizer  ──►  analysis
 
 ```
 BPETokenizer/
-├── CLAUDE.md  ARCHITECTURE.md  README.md  DATA_CARD.md  requirements.txt  .gitignore
+├── CLAUDE.md  ARCHITECTURE.md  DECISION.md  README.md  DATA_CARD.md  requirements.txt  .gitignore
 ├── plans/PLAN.md
 ├── collection/
 │   ├── download.py
