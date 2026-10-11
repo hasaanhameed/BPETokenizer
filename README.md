@@ -45,7 +45,7 @@ pip install -r requirements.txt
 
 ## Usage
 
-Run every command from the repository root. Steps 1 and 2 are implemented. Step 3 will be updated once the tokenizer is built.
+Run every command from the repository root.
 
 ```bash
 # 1. Collect raw text (VOA takes ~4 hours; downloads are cached in data/downloads/)
@@ -64,6 +64,28 @@ python -m tokenizer.encode_corpus
 
 # Tests
 python -m unittest discover tests
+python -m tests.compare_trainers --merges 5000
+```
+
+### Rebuilding the tokenizer from `train.txt`
+
+Place `train.txt` and `val.txt` in `data/final/`, then run:
+
+```bash
+python -m tokenizer.train_tokenizer   # data/final/train.txt -> models/urdu_bpe.merges (49,743 merges)
+python -m tokenizer.encode_corpus     # data/final/{train,val}.txt -> data/final/{train,val}.bin
+```
+
+Training is deterministic, so the same `train.txt` always gives the same merges. Every script takes `--help`. For example, `--input` and `--merges` let you train on a smaller file.
+
+To load the tokenizer in code:
+
+```python
+from tokenizer.bpe import BPETokenizer
+
+tokenizer = BPETokenizer.load("models/urdu_bpe.merges")
+ids = tokenizer.encode("اردو ایک خوبصورت زبان ہے۔")
+text = tokenizer.decode(ids)
 ```
 
 ## Outputs
