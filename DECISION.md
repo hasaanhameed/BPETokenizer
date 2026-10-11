@@ -64,6 +64,19 @@ This file records every design decision in the project: what was decided, why, a
 - **Decision:** Keep namespace 0 (articles and poems) and drop Wikisource's Page (250) and Index (252) namespaces.
 - **Why:** Page and Index pages still contain raw wiki markup (`<noinclude>`, `{{gap}}`, `'''`), and Index pages are only book metadata. Together they are about 1,250 pages and under 0.3% of the corpus, which isn't worth writing a markup stripper for.
 
+### D16. Drop forex and binary-options spam
+- **Decision:** Drop any document that contains فاریکس (forex) or بائنری آپشن (binary option). The rule applies to every source.
+- **Why:** After cleaning, 25,870 MADLAD documents (35.5% of MADLAD, 197 MB, about 13% of the whole corpus) were machine-translated trading spam. Keeping them would spend tokenizer merges on spam vocabulary and teach the Assignment 2 model to write spam.
+- **Trade-off:** A few legitimate finance articles are lost as well.
+
+### D17. Remove exact duplicates before counting boilerplate lines
+- **Decision:** Drop exact duplicate documents first. Then remove lines that appear in 5 or more of the remaining distinct documents.
+- **Why:** If boilerplate were counted first, a document copied 5 times would have all its lines removed as "boilerplate" and be reported under the wrong step.
+
+### D18. Run the per-document cleaning in parallel
+- **Decision:** Normalize, filter lines, filter spam and check length using a `multiprocessing.Pool` over batches of 20,000 documents. Deduplication and writing stay in one process, in the original order.
+- **Why:** Single-process cleaning ran at about 1 MB/s (around 30 minutes). In parallel it runs at about 9.5 MB/s. Batches keep memory bounded, and keeping the original order keeps the output deterministic.
+
 ## Normalization
 
 ### D10. Apply NFC before mapping letters
