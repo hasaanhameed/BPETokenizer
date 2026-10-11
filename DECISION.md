@@ -52,8 +52,17 @@ This file records every design decision in the project: what was decided, why, a
 - **Why:** More data helps the GPT in Assignment 2. BPE training cost depends mostly on the number of unique words, not on raw size.
 
 ### D9. Strip Wikisource page headers during extraction
-- **Decision:** Remove the `{title} [(year)] by {author} {page_id}{title}[year]{author}` header that starts every Wikisource page.
+- **Decision:** Remove the `{title} [(year)] by {author} {page_id}{title}[year]{author}` header that starts every Wikisource page. If the page has a subtitle and the author can't be found again, cut everything up to the page ID instead.
 - **Why:** It adds the English word "by", page IDs and run-together words to every poem.
+- **Note:** The space after "by" is a non-breaking space (U+00A0), so the match uses `\s`.
+
+### D13. Remove Wikimedia rendering failures
+- **Decision:** In both wikis, delete Lua error messages (`لوا خطا … ۔`) and the names of templates that failed to render (`سانچہ:…`, for example `سانچہ:PD-India`).
+- **Why:** They are error output, not Urdu text. Lua errors appeared in 6,394 Wikisource pages and 241 Wikipedia pages, and template names appeared 5,355 times in Wikisource.
+
+### D14. Keep only main-namespace Wikimedia pages
+- **Decision:** Keep namespace 0 (articles and poems) and drop Wikisource's Page (250) and Index (252) namespaces.
+- **Why:** Page and Index pages still contain raw wiki markup (`<noinclude>`, `{{gap}}`, `'''`), and Index pages are only book metadata. Together they are about 1,250 pages and under 0.3% of the corpus, which isn't worth writing a markup stripper for.
 
 ## Normalization
 
