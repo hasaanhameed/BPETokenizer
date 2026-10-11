@@ -42,6 +42,28 @@ def pair_key(pair, count, vocab):
     return (count, vocab[a], vocab[b], a, b)
 
 
+def split_words(text):
+    return [word for piece in text.split(END_OF_TEXT) for word in pretokenize(piece)]
+
+
+def train_reference(text, num_merges):
+    words = [list(word.encode("utf-8")) for word in split_words(text)]
+    vocab = build_vocab([])
+    merges = []
+    for _ in range(num_merges):
+        counts = Counter()
+        for word in words:
+            counts.update(zip(word, word[1:]))
+        if not counts:
+            break
+        pair = max(counts, key=lambda p: pair_key(p, counts[p], vocab))
+        new_id = len(vocab)
+        words = [merge_word(word, pair, new_id) for word in words]
+        merges.append(pair)
+        vocab.append(vocab[pair[0]] + vocab[pair[1]])
+    return merges
+
+
 class BPETokenizer:
     def __init__(self, merges):
         self.merges = list(merges)
