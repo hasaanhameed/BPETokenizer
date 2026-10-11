@@ -14,14 +14,15 @@ The corpus and tokenizer are the inputs to Assignment 2, which trains a GPT-styl
 
 | Document | Contents |
 |---|---|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | System design: components, data formats, data flow |
-| [plans/PLAN.md](plans/PLAN.md) | Phased implementation plan |
-| [DECISION.md](DECISION.md) | Every design decision, with reasons and rejected alternatives |
-| [DATA_CARD.md](DATA_CARD.md) | Corpus sources, licences, statistics and known biases |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design: components, data formats, data flow |
+| [docs/PLAN.md](docs/PLAN.md) | Phased implementation plan |
+| [docs/DECISION.md](docs/DECISION.md) | Every design decision, with reasons and rejected alternatives |
+| [docs/DATA_CARD.md](docs/DATA_CARD.md) | Corpus sources, licences, statistics and known biases |
 
 ## Repository Structure
 
 ```
+docs/         architecture, plan, decision log and data card
 collection/   scrapers and dataset downloaders
 cleaning/     normalization, cleaning and train/val/test split
 tokenizer/    BPE implementation, training and corpus encoding

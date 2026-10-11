@@ -20,8 +20,8 @@ collection  ──►  cleaning  ──►  tokenizer  ──►  analysis
 
 ```
 BPETokenizer/
-├── CLAUDE.md  ARCHITECTURE.md  DECISION.md  README.md  DATA_CARD.md  requirements.txt  .gitignore
-├── plans/PLAN.md
+├── CLAUDE.md  README.md  requirements.txt  .gitignore
+├── docs/                      ARCHITECTURE.md, PLAN.md, DECISION.md, DATA_CARD.md
 ├── collection/
 │   ├── download.py
 │   ├── scrape_voa.py

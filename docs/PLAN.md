@@ -47,9 +47,8 @@ This is CS 417 Assignment 1. The spec is `Assignment 1 - Urdu BPE Tokenizer from
 All code lives in folders. The root holds only docs and config. The filenames the PDF requires are kept exactly; they just sit inside folders. Folders are created only when something goes into them.
 ```
 BPETokenizer/                  (repo root)
-├── CLAUDE.md  README.md  DATA_CARD.md  requirements.txt  .gitignore
-├── plans/
-│   └── PLAN.md
+├── CLAUDE.md  README.md  requirements.txt  .gitignore
+├── docs/                      # ARCHITECTURE.md, PLAN.md, DECISION.md, DATA_CARD.md
 ├── collection/                # one script per source -> data/raw/<source>.jsonl
 │   ├── download.py            # shared cached downloader
 │   ├── scrape_voa.py
