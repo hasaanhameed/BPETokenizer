@@ -5,9 +5,9 @@
 |---|---|
 | 1. Collection | ✅ Done. 4 sources, 1.78 GB raw |
 | 2–3. Normalization, cleaning and splits | ✅ Done. 1.30 GB clean, 287,963 docs. See `DATA_CARD.md` |
-| 4. BPE | ⏳ Next |
-| 5. Train and encode | ⏳ |
-| 6. Analysis and report | ⏳ |
+| 4. BPE | ✅ Done (by partner). Reference and fast trainers, 48 tests passing |
+| 5. Train and encode | ✅ Done. 49,743 merges in 307 s; train.bin has 206.3M tokens and val.bin 2.0M; 1.28 tokens per word on test.txt (GPT-2: 5.77, o200k_base: 1.71) |
+| 6. Analysis and report | ⏳ Next |
 
 The design changes made during implementation are recorded in `DECISION.md`:
 - Urdu News 1M replaced by Wikisource
